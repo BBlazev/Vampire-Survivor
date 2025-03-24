@@ -1,7 +1,5 @@
 import pygame
-from settings import *
-import math
-from projectile import *
+from settings import *  # Ensure PLAYER_SPEED and other settings (like ENEMY_HP) are defined
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos):
@@ -12,112 +10,134 @@ class Player(pygame.sprite.Sprite):
         self.current_state = "idle"
         self.frames = self.animations[self.current_state]
         self.frame_index = 0
-        self.animation_speed = 100  
+
+        # Animation speeds: idle/run at 100ms; attack at 50ms per frame
+        self.normal_animation_speed = 100  
+        self.attack_animation_speed = 50   
         self.last_update = pygame.time.get_ticks()
-        self.facing_left = False
 
         self.image = self.frames[self.frame_index]
         self.rect = self.image.get_rect(center=pos)
-        self.last_shot = pygame.time.get_ticks()
+
+        # Facing direction: True = right, False = left
+        self.facing_right = True
+
+        # Attack settings
+        self.attack_damage = 10
+        self.attacking = False
+        self.damage_applied = False  # Ensure damage is applied only once per attack
+
+        self.health = 100
+
 
     def load_animations(self):
-        """Load and slice sprite sheets for each state."""
+        scale_factor = 2  # Adjust scaling as needed
+
+        # Idle Animation
         idle_sheet = pygame.image.load("assets/Idle/Player Idle.png").convert_alpha()
-        self.animations["idle"] = [idle_sheet.subsurface((i * 48, 0, 48, 48))
-                                   for i in range(10)]
+        self.animations["idle"] = [
+            pygame.transform.scale(
+                idle_sheet.subsurface((i * 48, 0, 48, 48)),
+                (int(48 * scale_factor), int(48 * scale_factor))
+            ) for i in range(10)
+        ]
         
+        # Run Animation
         run_sheet = pygame.image.load("assets/Run/player run.png").convert_alpha()
-        self.animations["run"] = [run_sheet.subsurface((i * 48, 0, 48, 48))
-                                  for i in range(8)]
+        self.animations["run"] = [
+            pygame.transform.scale(
+                run_sheet.subsurface((i * 48, 0, 48, 48)),
+                (int(48 * scale_factor), int(48 * scale_factor))
+            ) for i in range(8)
+        ]
         
+        # Attack Animation
         attack_sheet = pygame.image.load("assets/Attack/player sword.png").convert_alpha()
-        self.animations["attack"] = [attack_sheet.subsurface((i * 64, 0, 64, 64))
-                                     for i in range(6)]
+        self.animations["attack"] = [
+            pygame.transform.scale(
+                attack_sheet.subsurface((i * 64, 0, 64, 64)),
+                (int(64 * scale_factor), int(64 * scale_factor))
+            ) for i in range(6)
+        ]
 
     def set_state(self, new_state):
-        """Change the current animation state if not already in attack."""
-        if self.current_state != "attack" and new_state != self.current_state:
+        if new_state != self.current_state:
             self.current_state = new_state
             self.frames = self.animations[self.current_state]
             self.frame_index = 0
             self.last_update = pygame.time.get_ticks()
-            self.image = (pygame.transform.flip(self.frames[self.frame_index], True, False)
-                          if self.facing_left else self.frames[self.frame_index])
+            self.image = self.frames[self.frame_index]
 
     def attack(self):
-        """Trigger the attack state regardless of movement.
-           The attack animation plays fully while allowing movement.
-        """
-        self.current_state = "attack"
-        self.frames = self.animations["attack"]
-        self.frame_index = 0
-        self.last_update = pygame.time.get_ticks()
-        self.image = (pygame.transform.flip(self.frames[self.frame_index], True, False)
-                      if self.facing_left else self.frames[self.frame_index])
+        self.set_state("attack")
+        self.attacking = True
+        self.damage_applied = False
 
-    def handle_animation(self, keys_pressed):
-        """Update the current animation frame, flipping the image if needed."""
+    def take_damage(self, damage):
+        self.health -= damage
+        print("Player health:", self.health)
+        if self.health <= 0:
+            print("Player died!")
+            game_over = True
+
+    def update(self, keys_pressed, enemy_group=None):
         now = pygame.time.get_ticks()
-        if now - self.last_update >= self.animation_speed:
-            self.last_update = now
+        current_speed = self.attack_animation_speed if self.current_state == "attack" else self.normal_animation_speed
+        dt = now - self.last_update
+
+        if dt >= current_speed:
+            frames_to_advance = dt // current_speed
+            self.frame_index += frames_to_advance
+            self.last_update = now - (dt % current_speed)
+
             if self.current_state == "attack":
-                if self.frame_index < len(self.frames) - 1:
-                    self.frame_index += 1
+                if self.frame_index >= len(self.frames):
+                    self.set_state("idle")
+                    self.attacking = False
                 else:
-                    if (keys_pressed[pygame.K_LEFT] or keys_pressed[pygame.K_a] or
-                        keys_pressed[pygame.K_RIGHT] or keys_pressed[pygame.K_d] or
-                        keys_pressed[pygame.K_UP] or keys_pressed[pygame.K_w] or
-                        keys_pressed[pygame.K_DOWN] or keys_pressed[pygame.K_s]):
-                        self.current_state = "run"
-                    else:
-                        self.current_state = "idle"
-                    self.frames = self.animations[self.current_state]
-                    self.frame_index = 0
+                    hit_frame = 5  # adjust as needed
+                    if self.frame_index == hit_frame and not self.damage_applied and enemy_group is not None:
+                        self.attack_rect = self.rect.copy()
+                        extension = 40  # adjust extension if needed
+                        if self.facing_right:
+                            self.attack_rect.width += extension
+                        else:
+                            self.attack_rect.x -= extension
+                            self.attack_rect.width += extension
+
+                        for enemy in enemy_group:
+                            if self.attack_rect.colliderect(enemy.rect):
+                                if hasattr(enemy, "take_damage"):
+                                    enemy.take_damage(self.attack_damage)
+                                else:
+                                    enemy.health -= self.attack_damage
+                        self.damage_applied = True
             else:
-                self.frame_index = (self.frame_index + 1) % len(self.frames)
-            
-            current_frame = self.frames[self.frame_index]
-            self.image = pygame.transform.flip(current_frame, True, False) if self.facing_left else current_frame
+                self.frame_index %= len(self.frames)
 
-    def handle_movement(self, keys_pressed):
-        """Process movement and update the facing direction."""
-        dx, dy = 0, 0
-        if keys_pressed[pygame.K_LEFT] or keys_pressed[pygame.K_a]:
-            dx = -PLAYER_SPEED
-            self.facing_left = True  
-        if keys_pressed[pygame.K_RIGHT] or keys_pressed[pygame.K_d]:
-            dx = PLAYER_SPEED
-            self.facing_left = False 
-        if keys_pressed[pygame.K_UP] or keys_pressed[pygame.K_w]:
-            dy = -PLAYER_SPEED
-        if keys_pressed[pygame.K_DOWN] or keys_pressed[pygame.K_s]:
-            dy = PLAYER_SPEED
+            self.image = self.frames[self.frame_index % len(self.frames)]
+            if not self.facing_right:
+                self.image = pygame.transform.flip(self.image, True, False)
 
-        self.rect.x += dx
-        self.rect.y += dy
-        self.rect.clamp_ip(pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+        if not self.attacking:
+            movement = pygame.math.Vector2(0, 0)
+            if keys_pressed[pygame.K_LEFT]:
+                movement.x -= PLAYER_SPEED
+            if keys_pressed[pygame.K_RIGHT]:
+                movement.x += PLAYER_SPEED
+            if keys_pressed[pygame.K_UP]:
+                movement.y -= PLAYER_SPEED
+            if keys_pressed[pygame.K_DOWN]:
+                movement.y += PLAYER_SPEED
 
-        if self.current_state != "attack":
-            if dx != 0 or dy != 0:
+            if movement.x < 0:
+                self.facing_right = False
+            elif movement.x > 0:
+                self.facing_right = True
+
+            if movement.length() > 0:
+                self.rect.x += movement.x
+                self.rect.y += movement.y
                 self.set_state("run")
             else:
                 self.set_state("idle")
-
-    def update(self, keys_pressed):
-        """Update both animation and movement independently."""
-        self.handle_animation(keys_pressed)
-        self.handle_movement(keys_pressed)
-
-
-    def auto_shoot(self, projectiles_group):
-        """Automatically fire projectiles in eight directions, disabled during attack if desired."""
-        if self.current_state != "attack":
-            now = pygame.time.get_ticks()
-            if now - self.last_shot >= AUTO_SHOOT_DELAY:
-                self.last_shot = now
-                for angle in range(0, 360, 45):
-                    rad = math.radians(angle)
-                    dx = math.cos(rad) * PROJECTILE_SPEED
-                    dy = math.sin(rad) * PROJECTILE_SPEED
-                    projectile = Projectile(self.rect.center, dx, dy)
-                    projectiles_group.add(projectile)
