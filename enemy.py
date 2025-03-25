@@ -21,7 +21,7 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=pos)
         self.health = ENEMY_HP
         
-        self.attack_damage = 10
+        self.attack_damage = 6
         self.attack_cooldown = 500  
         self.on_cooldown = False
         self.last_attack_finished_time = 0
@@ -110,9 +110,8 @@ class Enemy(pygame.sprite.Sprite):
                     self.on_cooldown = True
                     self.damage_applied = False
                 else:
-                    hit_frame = 3  # Adjust hit frame for enemy attack as needed
+                    hit_frame = 3  
                     if self.frame_index == hit_frame and not self.damage_applied:
-                        # Check if enemy's rect overlaps the player's rect
                         if self.rect.colliderect(self.target.rect):
                             print("Enemy attacking player!")
                             self.target.take_damage(self.attack_damage)
@@ -124,7 +123,6 @@ class Enemy(pygame.sprite.Sprite):
             if self.facing_left:
                 self.image = pygame.transform.flip(self.image, True, False)
 
-        # Movement and attack decision logic
         dx = self.target.rect.centerx - self.rect.centerx
         dy = self.target.rect.centery - self.rect.centery
         distance = math.hypot(dx, dy) or 1

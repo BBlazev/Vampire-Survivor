@@ -3,7 +3,6 @@ from settings import SCREEN_WIDTH, SCREEN_HEIGHT
 
 class Camera:
     def __init__(self):
-        # Initialize with a view that matches the screen dimensions.
         self.camera = pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 
     def apply(self, target):

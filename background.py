@@ -16,11 +16,9 @@ class InfiniteBackground:
         offset by the camera's position.
         """
 
-        # Calculate offset within a tile
         x_offset = camera.camera.x % self.tile_width
         y_offset = camera.camera.y % self.tile_height
 
-        # Determine how many tiles are needed to cover the screen
         tiles_x = SCREEN_WIDTH // self.tile_width + 2
         tiles_y = SCREEN_HEIGHT // self.tile_height + 2
 

@@ -1,5 +1,5 @@
 import pygame
-from settings import *  # Ensure PLAYER_SPEED and other settings (like ENEMY_HP) are defined
+from settings import *  
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos):
@@ -11,7 +11,6 @@ class Player(pygame.sprite.Sprite):
         self.frames = self.animations[self.current_state]
         self.frame_index = 0
 
-        # Animation speeds: idle/run at 100ms; attack at 50ms per frame
         self.normal_animation_speed = 100  
         self.attack_animation_speed = 50   
         self.last_update = pygame.time.get_ticks()
@@ -19,21 +18,18 @@ class Player(pygame.sprite.Sprite):
         self.image = self.frames[self.frame_index]
         self.rect = self.image.get_rect(center=pos)
 
-        # Facing direction: True = right, False = left
         self.facing_right = True
 
-        # Attack settings
         self.attack_damage = 10
         self.attacking = False
-        self.damage_applied = False  # Ensure damage is applied only once per attack
+        self.damage_applied = False  
 
         self.health = 100
 
 
     def load_animations(self):
-        scale_factor = 2  # Adjust scaling as needed
+        scale_factor = 2 
 
-        # Idle Animation
         idle_sheet = pygame.image.load("assets/Idle/Player Idle.png").convert_alpha()
         self.animations["idle"] = [
             pygame.transform.scale(
@@ -42,7 +38,6 @@ class Player(pygame.sprite.Sprite):
             ) for i in range(10)
         ]
         
-        # Run Animation
         run_sheet = pygame.image.load("assets/Run/player run.png").convert_alpha()
         self.animations["run"] = [
             pygame.transform.scale(
@@ -51,7 +46,6 @@ class Player(pygame.sprite.Sprite):
             ) for i in range(8)
         ]
         
-        # Attack Animation
         attack_sheet = pygame.image.load("assets/Attack/player sword.png").convert_alpha()
         self.animations["attack"] = [
             pygame.transform.scale(
@@ -77,6 +71,7 @@ class Player(pygame.sprite.Sprite):
         self.health -= damage
         print("Player health:", self.health)
         if self.health <= 0:
+            self.health = 0
             print("Player died!")
             game_over = True
 
@@ -95,10 +90,10 @@ class Player(pygame.sprite.Sprite):
                     self.set_state("idle")
                     self.attacking = False
                 else:
-                    hit_frame = 5  # adjust as needed
+                    hit_frame = 5  
                     if self.frame_index == hit_frame and not self.damage_applied and enemy_group is not None:
                         self.attack_rect = self.rect.copy()
-                        extension = 40  # adjust extension if needed
+                        extension = 40  
                         if self.facing_right:
                             self.attack_rect.width += extension
                         else:
@@ -121,13 +116,13 @@ class Player(pygame.sprite.Sprite):
 
         if not self.attacking:
             movement = pygame.math.Vector2(0, 0)
-            if keys_pressed[pygame.K_LEFT]:
+            if keys_pressed[pygame.K_a]:
                 movement.x -= PLAYER_SPEED
-            if keys_pressed[pygame.K_RIGHT]:
+            if keys_pressed[pygame.K_d]:
                 movement.x += PLAYER_SPEED
-            if keys_pressed[pygame.K_UP]:
+            if keys_pressed[pygame.K_w]:
                 movement.y -= PLAYER_SPEED
-            if keys_pressed[pygame.K_DOWN]:
+            if keys_pressed[pygame.K_s]:
                 movement.y += PLAYER_SPEED
 
             if movement.x < 0:
